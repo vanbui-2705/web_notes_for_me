@@ -7,13 +7,13 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
 
-from config import settings
-from database import get_db
-from models import User
-from schemas import TokenData
+from ..config import settings
+from ..database import get_db
+from ..models import User
+from ..schemas import TokenData
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")  # Note: in router, prefix is /api and router prefix is /auth, so full url is /api/auth/login
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

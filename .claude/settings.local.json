@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir *)",
+      "Bash(python -c \"from main import app; print\\('OK'\\)\")",
+      "Bash(uvicorn main:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(Get-Content *)",
+      "Bash(pip install *)",
+      "Bash(curl -X POST \"http://localhost:8000/api/auth/register\" -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\": \\\\\"user@taskflow.com\\\\\", \\\\\"username\\\\\": \\\\\"taskflow_user\\\\\", \\\\\"password\\\\\": \\\\\"password123\\\\\"}\" -v)",
+      "Bash(Select-Object -Last 30)",
+      "Bash(cd E:Webweb-note-appbackend *)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq uvicorn*\")",
+      "Bash(Stop-Process -Name python -Force -ErrorAction SilentlyContinue)",
+      "Bash(curl *)",
+      "Bash(python migrate.py)",
+      "Bash(python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000)"
+    ]
+  }
+}

@@ -19,27 +19,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
-    const storedUser = localStorage.getItem('user');
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, [token]);
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          const profile = await authAPI.getMe();
+          setUser(profile);
+          localStorage.setItem('user', JSON.stringify(profile));
+        } catch (error) {
+          // Token expired or invalid
+          logout();
+        }
+      }
+      setIsLoading(false);
+    };
+    initAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
     const data = await authAPI.login({ email, password });
     localStorage.setItem('token', data.access_token);
     setToken(data.access_token);
-    // Get user info (you might want to add a get me endpoint)
-    // For now, we'll skip setting user until we have a /me endpoint
+    
+    // Fetch real profile
+    const profile = await authAPI.getMe();
+    localStorage.setItem('user', JSON.stringify(profile));
+    setUser(profile);
   };
 
   const register = async (email: string, username: string, password: string) => {
     const userData = await authAPI.register({ email, username, password });
-    localStorage.setItem('token', 'temp-token'); // You'll need to add login after registration
-    setToken('temp-token');
-    setUser(userData);
+    // Immediately log in with the new credentials to fetch a real JWT access token
+    const loginData = await authAPI.login({ email, password });
+    localStorage.setItem('token', loginData.access_token);
+    
+    // Fetch real profile
+    setToken(loginData.access_token);
+    const profile = await authAPI.getMe();
+    localStorage.setItem('user', JSON.stringify(profile));
+    setUser(profile);
   };
 
   const logout = () => {

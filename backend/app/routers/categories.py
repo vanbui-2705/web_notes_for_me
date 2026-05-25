@@ -3,10 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
 
-from database import get_db
-from models import Category
-from schemas import CategoryCreate, CategoryResponse
-from auth import get_current_active_user
+from ..database import get_db
+from ..models import Category
+from ..schemas import CategoryCreate, CategoryResponse
+from ..utils.auth import get_current_active_user
 
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
@@ -25,7 +25,24 @@ async def get_categories(
         .offset(skip)
         .limit(limit)
     )
-    return result.scalars().all()
+    categories = result.scalars().all()
+    
+    if not categories:
+        default_categories = [
+            {"name": "Công việc", "color": "#6366f1"},
+            {"name": "Học tập", "color": "#06b6d4"},
+            {"name": "Cá nhân", "color": "#ec4899"},
+        ]
+        categories = []
+        for cat_data in default_categories:
+            cat = Category(**cat_data, user_id=current_user.id)
+            db.add(cat)
+            categories.append(cat)
+        await db.commit()
+        for cat in categories:
+            await db.refresh(cat)
+            
+    return categories
 
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)

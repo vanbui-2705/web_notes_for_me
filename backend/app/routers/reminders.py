@@ -6,11 +6,11 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from database import get_db
-from models import Reminder, Note
-from schemas import ReminderCreate, ReminderResponse
-from auth import get_current_active_user
-from config import settings
+from ..database import get_db
+from ..models import Reminder, Note
+from ..schemas import ReminderCreate, ReminderResponse
+from ..utils.auth import get_current_active_user
+from ..config import settings
 
 
 router = APIRouter(prefix="/reminders", tags=["Reminders"])
