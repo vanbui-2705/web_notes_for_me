@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { LayoutDashboard, Calendar, CalendarDays, CalendarRange, Wallet, User, Settings, LifeBuoy, Plus, LogOut, Shield } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +23,24 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const { openModal } = useTaskModal();
+
+  // Dynamic Avatar State
+  const [avatarSeed, setAvatarSeed] = useState(
+    user ? (localStorage.getItem(`avatar-seed-${user.id}`) || user.username) : 'Felix'
+  );
+
+  useEffect(() => {
+    if (user) {
+      setAvatarSeed(localStorage.getItem(`avatar-seed-${user.id}`) || user.username);
+    }
+    const handleAvatarChange = () => {
+      if (user) {
+        setAvatarSeed(localStorage.getItem(`avatar-seed-${user.id}`) || user.username);
+      }
+    };
+    window.addEventListener('avatar-changed', handleAvatarChange);
+    return () => window.removeEventListener('avatar-changed', handleAvatarChange);
+  }, [user]);
 
   return (
     <>
@@ -50,9 +69,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="px-6 py-4">
           <div className="flex items-center gap-3">
             <img 
-              src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=f1f5f9" 
+              src={`https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}&backgroundColor=f1f5f9`} 
               alt="Avatar" 
-              className="w-10 h-10 rounded-full"
+              className="w-10 h-10 rounded-full border border-white/5 shadow-sm"
             />
             <div className="min-w-0">
               <p className="font-bold text-sm truncate">{user?.username || 'Quietly Ambitious'}</p>

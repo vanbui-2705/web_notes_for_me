@@ -31,6 +31,11 @@ import type {
   FocusSession,
   FocusSessionCreate,
   FocusSessionSummary,
+  Budget,
+  BudgetCreate,
+  Debt,
+  DebtCreate,
+  DebtUpdate,
 } from '../types/types';
 
 const USE_MOCK_API = false;

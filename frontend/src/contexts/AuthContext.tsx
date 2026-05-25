@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authAPI } from '../lib/apiService';
 import type { User } from '../types/types';
 
@@ -14,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    queryClient.clear(); // Clear any previous user's cached queries before logging in
     const data = await authAPI.login({ email, password });
     localStorage.setItem('token', data.access_token);
     setToken(data.access_token);
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, username: string, password: string) => {
+    queryClient.clear(); // Clear cache before starting fresh registration/session
     const userData = await authAPI.register({ email, username, password });
     // Immediately log in with the new credentials to fetch a real JWT access token
     const loginData = await authAPI.login({ email, password });
@@ -65,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    queryClient.clear(); // Wipe out TanStack Query cache completely to avoid state leaks between different accounts
   };
 
   return (

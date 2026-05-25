@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, addDays, eachDayOfInterval, subDays } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Plus, CheckCircle2, Circle, X, Play, Pause, RotateCcw, Bell, Sparkles, Trophy, Crown, Shield, Zap } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { notesAPI, categoriesAPI, focusAPI, gamificationAPI, metricsAPI } from '../lib/apiService';
 import type { Note, NoteStatus } from '../types/types';
 import GlassCard from '../components/ui/GlassCard';
@@ -136,6 +137,9 @@ export default function WeeklyPage() {
     setTimeout(() => setXpToast(null), 3500);
   };
 
+  // Comfort Toast notification state
+  const [comfortToast, setComfortToast] = useState<string | null>(null);
+
   const createNote = useMutation({
     mutationFn: (data: { title: string; date: string; category_id?: number | null; priority?: number }) =>
       notesAPI.create({
@@ -220,6 +224,22 @@ export default function WeeklyPage() {
       queryClient.setQueryData(['dailyMetric', todayDateStr, 'mood'], { value: String(newVal) });
       return { previous };
     },
+    onSuccess: (data, variables) => {
+      if (variables >= 4) {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.8 },
+          colors: ['#fb8500', '#ffb703', '#ff9e00']
+        });
+      } else if (variables <= 2) {
+        const msg = variables === 1
+          ? "Không sao cả, ngày mai trời lại sáng! Bạn đã làm rất tốt hôm nay rồi. Hãy hít thở sâu và nghỉ ngơi nhé! 💛"
+          : "Hãy dịu dàng với bản thân một chút. Những ngày giông bão rồi cũng sẽ qua, nhường chỗ cho nắng ấm. Cố lên nhé! 🌤️";
+        setComfortToast(msg);
+        setTimeout(() => setComfortToast(null), 5000);
+      }
+    },
     onError: (err, newVal, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['dailyMetric', todayDateStr, 'mood'], context.previous);
@@ -250,20 +270,26 @@ export default function WeeklyPage() {
 
         <div className="flex items-center gap-3">
           {/* Mood status selector pill */}
-          <div className="flex items-center gap-2 bg-slate-900/60 border border-white/5 px-4 py-2 rounded-full backdrop-blur-md shadow-lg">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Tâm trạng:</span>
-            {moods.map((emoji, index) => (
-              <button
-                key={index}
-                onClick={() => changeMood.mutate(index + 1)}
-                className={`text-base transition-transform cursor-pointer hover:scale-125 ${
-                  activeMoodVal === index + 1 ? 'scale-125 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)] z-10' : 'opacity-40 hover:opacity-100'
-                }`}
-                title={`Đặt tâm trạng: ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
+          <div className="flex items-center gap-2.5 bg-slate-950/60 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md shadow-xl transition-all duration-300">
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mr-1">Tâm trạng:</span>
+            {moods.map((emoji, index) => {
+              const isSelected = activeMoodVal === index + 1;
+              const moodsList = ['Tồi tệ', 'Bất ổn', 'Bình thường', 'Khá tốt', 'Tuyệt vời'];
+              return (
+                <button
+                  key={index}
+                  onClick={() => changeMood.mutate(index + 1)}
+                  className={`text-base w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-300 cursor-pointer ${
+                    isSelected 
+                      ? 'scale-125 bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/80 shadow-[0_0_10px_rgba(251,133,0,0.3)] z-10 text-lg' 
+                      : 'opacity-40 hover:opacity-100 hover:scale-115 border border-transparent hover:bg-white/5'
+                  }`}
+                  title={`${moodsList[index]}: ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
           </div>
 
           {/* Notification Icon */}
@@ -843,6 +869,32 @@ export default function WeeklyPage() {
             <div>
               <p className="font-black text-sm text-white">{xpToast.message}</p>
               <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,183,3,0.7)' }}>Tiếp tục làm mạnh lên nào! 💪</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── COMFORT TOAST NOTIFICATION ── */}
+      {comfortToast && (
+        <div
+          className="fixed bottom-6 right-6 z-50 animate-scale-up max-w-xs"
+          style={{
+            background: 'linear-gradient(135deg, rgba(20,16,4,0.95), rgba(30,22,4,0.98))',
+            border: '1px solid rgba(251,133,0,0.35)',
+            borderRadius: '16px',
+            boxShadow: '0 10px 40px rgba(251,133,0,0.2), 0 4px 20px rgba(0,0,0,0.5)',
+            padding: '14px 20px',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #fb8500, #ffb703)', boxShadow: '0 0 15px rgba(251,133,0,0.4)' }}
+            >
+              <span className="text-xl">✨</span>
+            </div>
+            <div>
+              <p className="font-bold text-[10px] text-amber-400 uppercase tracking-wider">Lời nhắn yêu thương</p>
+              <p className="text-[11px] text-white mt-1 leading-relaxed font-medium">{comfortToast}</p>
             </div>
           </div>
         </div>

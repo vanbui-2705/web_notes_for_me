@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, subDays } from 'date-fns';
 import { Play, Zap, Droplets, Smile, X } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { notesAPI, metricsAPI, habitsAPI, gamificationAPI, focusAPI } from '../lib/apiService';
 import type { Note, Habit, DailyMetric } from '../types/types';
 
@@ -123,6 +124,16 @@ export default function DashboardPage() {
       queryClient.setQueryData(['dailyMetric', today, 'mood'], { value: String(newVal) });
       return { previous };
     },
+    onSuccess: (data, variables) => {
+      if (variables >= 4) {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.8 },
+          colors: ['#fb8500', '#ffb703', '#ff9e00']
+        });
+      }
+    },
     onError: (err, newVal, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['dailyMetric', today, 'mood'], context.previous);
@@ -136,8 +147,16 @@ export default function DashboardPage() {
   const updateWater = useMutation({
     mutationFn: (value: number) =>
       metricsAPI.createOrUpdateMetric({ date: today, metric_type: 'water', value: String(value) }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['dailyMetric', today, 'water'] });
+      if (variables >= 8) {
+        confetti({
+          particleCount: 80,
+          spread: 80,
+          origin: { y: 0.8 },
+          colors: ['#3b82f6', '#06b6d4', '#60a5fa']
+        });
+      }
     },
   });
 
@@ -351,50 +370,111 @@ export default function DashboardPage() {
         <div className="col-span-1 md:col-span-6 grid grid-cols-2 gap-4">
           {/* Mood Tracker */}
           <div className="col-span-2">
-            <GlassCard className="h-full p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-display font-bold text-base">How are you feeling?</h3>
-                <Smile className="w-5 h-5" style={{ color: moodValue >= 4 ? '#10b981' : moodValue === 3 ? '#fbbf24' : '#ef4444' }} />
+            <GlassCard className="h-full p-5 relative overflow-hidden" accentColor="var(--accent-purple)">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-display font-bold text-base text-white">Tâm trạng hôm nay</h3>
+                  <p className="text-[11px] text-slate-400">Bạn đang cảm thấy thế nào?</p>
+                </div>
+                <Smile 
+                  className={`w-6 h-6 transition-all duration-500 ${
+                    moodValue >= 4 ? 'text-emerald-400 rotate-12 scale-110' : moodValue === 3 ? 'text-amber-400' : 'text-rose-500 -rotate-12 scale-110'
+                  }`} 
+                />
               </div>
-              <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => updateMood.mutate(value)}
-                    className="w-10 h-10 rounded-full text-xl transition-transform hover:scale-110"
-                    style={{
-                      background: value === moodValue ? 'var(--accent-purple)' : 'gray',
-                      color: value === moodValue ? 'white' : 'white',
-                    }}
-                    disabled={updateMood.isPending}
-                  >
-                    {['😢', '😕', '😐', '🙂', '😁'][value - 1]}
-                  </button>
-                ))}
+              <div className="flex justify-between items-center gap-2 px-1">
+                {[1, 2, 3, 4, 5].map((value) => {
+                  const isSelected = value === moodValue;
+                  const emojis = ['😢', '😕', '😐', '🙂', '😁'];
+                  const moodsList = ['Tồi tệ', 'Bất ổn', 'Bình thường', 'Khá tốt', 'Tuyệt vời'];
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => updateMood.mutate(value)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-2xl w-14 h-16 transition-all duration-300 cursor-pointer ${
+                        isSelected 
+                          ? 'bg-gradient-to-br from-amber-500 to-orange-600 border border-amber-400/80 shadow-[0_0_15px_rgba(251,133,0,0.4)] scale-110 -translate-y-1' 
+                          : 'bg-slate-950/40 border border-white/5 opacity-60 hover:opacity-100 hover:scale-105 hover:bg-slate-900/60'
+                      }`}
+                      disabled={updateMood.isPending}
+                      title={moodsList[value - 1]}
+                    >
+                      <span className={`text-2xl transition-transform duration-300 ${isSelected ? 'scale-110 rotate-3' : ''}`}>
+                        {emojis[value - 1]}
+                      </span>
+                      <span className={`text-[9px] font-bold mt-1.5 whitespace-nowrap transition-colors duration-300 ${isSelected ? 'text-white' : 'text-slate-500'}`}>
+                        {moodsList[value - 1]}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+
+              {moodValue <= 2 && (
+                <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 font-medium leading-relaxed animate-fade-slide-up flex items-start gap-2">
+                  <span className="text-sm">✨</span>
+                  <p>{moodValue === 1 
+                    ? "Không sao cả, ngày mai trời lại sáng! Bạn đã làm rất tốt hôm nay rồi. Hãy hít thở sâu và nghỉ ngơi nhé! 💛"
+                    : "Hãy dịu dàng với bản thân một chút. Những ngày giông bão rồi cũng sẽ qua, nhường chỗ cho nắng ấm. Cố lên nhé! 🌤️"
+                  }</p>
+                </div>
+              )}
             </GlassCard>
           </div>
 
           {/* Water Tracker */}
           <div className="col-span-2">
-            <GlassCard className="h-full p-4">
+            <GlassCard className="h-full p-5 relative overflow-hidden" accentColor="#3b82f6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-display font-bold text-base">Water Intake</h3>
-                <Droplets className="w-5 h-5 text-blue-500" />
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 text-center">
-                  <p className="text-3xl font-black">{waterCount}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>cups today</p>
+                <div>
+                  <h3 className="font-display font-bold text-base text-white">Nước uống mỗi ngày</h3>
+                  <p className="text-[11px] text-slate-400">Mục tiêu: 8 cốc (2 lít) mỗi ngày</p>
                 </div>
-                <button
-                  onClick={() => updateWater.mutate(waterCount + 1)}
-                  className="px-6 py-3 rounded-xl font-bold transition-colors hover:bg-blue-500"
-                  style={{ background: '#3b82f6', color: 'white' }}
-                  disabled={updateWater.isPending}
-                >
-                  + Add Cup
-                </button>
+                <Droplets className="w-6 h-6 text-blue-400 animate-pulse" />
+              </div>
+              <div className="flex items-center gap-6 mt-3">
+                {/* Visual Cup Container */}
+                <div className="relative w-14 h-18 border-2 border-blue-400/30 rounded-b-2xl rounded-t-sm flex items-end justify-center overflow-hidden bg-slate-950/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
+                  {/* Fluid Level representation */}
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-600 via-cyan-500 to-cyan-400 transition-all duration-700 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                    style={{ height: `${Math.min((waterCount / 8) * 100, 100)}%` }}
+                  />
+                  {/* Bubble details */}
+                  {waterCount > 0 && (
+                    <div className="absolute inset-0 pointer-events-none opacity-40">
+                      <span className="absolute bottom-2 left-3 w-1 h-1 bg-white rounded-full animate-ping" />
+                      <span className="absolute bottom-6 right-3 w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
+                      <span className="absolute bottom-10 left-5 w-1 h-1 bg-white rounded-full animate-pulse" />
+                    </div>
+                  )}
+                  {/* Text index */}
+                  <span className="z-10 font-black text-xs text-white drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)]">
+                    {Math.round(Math.min((waterCount / 8) * 100, 100))}%
+                  </span>
+                </div>
+
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{waterCount}</span>
+                    <span className="text-xs text-slate-400 font-bold">/ 8 cốc</span>
+                  </div>
+                  <button
+                    onClick={() => updateWater.mutate(waterCount + 1)}
+                    className="w-full py-2.5 rounded-xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 border border-blue-400 text-xs text-white hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.25)] flex items-center justify-center gap-1.5 cursor-pointer"
+                    disabled={updateWater.isPending}
+                  >
+                    <span>+ Uống 1 cốc</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Functional Hydration message feedback */}
+              <div className="mt-4 p-2.5 rounded-xl bg-blue-950/40 border border-blue-500/20 text-[10px] text-blue-300 font-semibold leading-relaxed transition-all duration-300 text-center">
+                {waterCount === 0 && "💧 Bạn chưa uống cốc nước nào hôm nay. Hãy tiếp nước nhé!"}
+                {waterCount > 0 && waterCount < 4 && "⚡ Hít hà... Thật sảng khoái! Hãy giữ cơ thể luôn đủ nước nhé!"}
+                {waterCount >= 4 && waterCount < 8 && "🧠 Tuyệt vời! Nước giúp thanh lọc cơ thể và tăng khả năng tập trung!"}
+                {waterCount >= 8 && "🌟 Chúc mừng! Bạn đã hoàn thành 100% mục tiêu uống nước hôm nay!"}
               </div>
             </GlassCard>
           </div>

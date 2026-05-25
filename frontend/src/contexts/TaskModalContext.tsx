@@ -11,6 +11,8 @@ interface TaskModalContextType {
   setNewTask: (task: any) => void;
   createNote: () => void;
   isCreating: boolean;
+  importBulkNotes: (tasksText: string) => Promise<void>;
+  isBulkCreating: boolean;
 }
 
 const TaskModalContext = createContext<TaskModalContextType | null>(null);
@@ -38,6 +40,27 @@ export const TaskModalProvider = ({ children }: { children: ReactNode }) => {
         category_id: data.category_id,
         reward_amount: data.reward_amount,
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['notes', date] });
+      setIsOpen(false);
+      setNewTask({ title: '', time: '9:00 AM', category_id: '', priority: '1', reward_amount: '' });
+    },
+  });
+
+  const createBulkNotesMutation = useMutation({
+    mutationFn: async (tasks: Array<{ title: string; time: string; date: string; category_id?: number | null; priority?: number; reward_amount?: number }>) => {
+      const promises = tasks.map(t => notesAPI.create({
+        title: t.title,
+        content: t.time,
+        date: t.date,
+        status: 'todo',
+        priority: t.priority || 1,
+        category_id: t.category_id,
+        reward_amount: t.reward_amount,
+      }));
+      return Promise.all(promises);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       queryClient.invalidateQueries({ queryKey: ['notes', date] });
@@ -79,6 +102,28 @@ export const TaskModalProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const importBulkNotes = async (tasksText: string) => {
+    const titles = tasksText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    if (titles.length === 0) return;
+
+    const time24h = parseTimeTo24h(newTask.time);
+    const isoDateTime = `${date}T${time24h}`;
+    const category_id = newTask.category_id ? parseInt(newTask.category_id, 10) : null;
+    const priority = parseInt(newTask.priority, 10);
+    const reward_amount = newTask.reward_amount ? parseFloat(newTask.reward_amount) : 0;
+
+    const payload = titles.map(title => ({
+      title,
+      time: newTask.time,
+      date: isoDateTime,
+      category_id,
+      priority,
+      reward_amount,
+    }));
+
+    await createBulkNotesMutation.mutateAsync(payload);
+  };
+
   return (
     <TaskModalContext.Provider value={{
       isOpen,
@@ -87,8 +132,10 @@ export const TaskModalProvider = ({ children }: { children: ReactNode }) => {
       closeModal,
       newTask,
       setNewTask,
-      createNote: createNote,
+      createNote,
       isCreating: createNoteMutation.isPending,
+      importBulkNotes,
+      isBulkCreating: createBulkNotesMutation.isPending,
     }}>
       {children}
     </TaskModalContext.Provider>

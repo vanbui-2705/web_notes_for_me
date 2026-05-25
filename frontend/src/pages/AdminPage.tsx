@@ -206,9 +206,9 @@ export default function AdminPage() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
                           <img 
-                            src={`https://api.dicebear.com/7.x/notionists/svg?seed=${u.username}&backgroundColor=c084fc`} 
+                            src={`https://api.dicebear.com/7.x/notionists/svg?seed=${localStorage.getItem('avatar-seed-' + u.id) || u.username}&backgroundColor=f1f5f9`} 
                             alt="avatar" 
-                            className="w-10 h-10 rounded-full border border-purple-500/20"
+                            className="w-10 h-10 rounded-full border border-purple-500/20 bg-slate-800"
                           />
                           <div>
                             <span className="font-bold text-white block">

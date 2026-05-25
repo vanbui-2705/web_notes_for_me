@@ -1,16 +1,37 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import GlassCard from '../components/ui/GlassCard';
-import { Award, Zap, Clock, ShieldCheck, Flame, Trophy, Star } from 'lucide-react';
+import { Award, Zap, Clock, ShieldCheck, Flame, Trophy, Star, Edit } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { gamificationAPI, notesAPI } from '../lib/apiService';
 import type { UserStats, Badge, LeaderboardEntry, Note } from '../types/types';
-import { useMemo } from 'react';
 
 export default function ProfilePage() {
+  const { user } = useAuth();
+
   const { data: userStats, isLoading: statsLoading } = useQuery({
     queryKey: ['userStats'],
     queryFn: () => gamificationAPI.getUserStats(),
     staleTime: 60 * 1000,
   });
+
+  const [selectedSeed, setSelectedSeed] = useState(
+    user ? (localStorage.getItem(`avatar-seed-${user.id}`) || user.username) : 'Felix'
+  );
+
+  useEffect(() => {
+    if (user) {
+      setSelectedSeed(localStorage.getItem(`avatar-seed-${user.id}`) || user.username);
+    }
+  }, [user]);
+
+  const handleAvatarChange = (seed: string) => {
+    if (user) {
+      localStorage.setItem(`avatar-seed-${user.id}`, seed);
+      setSelectedSeed(seed);
+      window.dispatchEvent(new Event('avatar-changed')); // Update sidebar/topbar instantly
+    }
+  };
 
   const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery({
     queryKey: ['leaderboard'],
@@ -147,6 +168,63 @@ export default function ProfilePage() {
         {/* ── RIGHT COLUMN: STATS & LEADERBOARD ── */}
         <div className="space-y-6">
 
+          {/* Avatar Changer Widget */}
+          <GlassCard className="p-5 flex flex-col items-center border border-white/10" accentColor="var(--accent-pink)">
+            <h3 className="font-display font-bold text-sm text-white mb-1.5 self-start">Ảnh đại diện của bạn</h3>
+            <p className="text-[10px] text-slate-400 self-start mb-4">Nhấp vào một hình ảnh bên dưới để thay đổi phong cách!</p>
+            
+            {/* Display active large avatar */}
+            <div className="relative w-24 h-24 mb-5 rounded-full border-2 border-amber-500 bg-slate-900/60 p-1 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] group">
+              <img
+                src={`https://api.dicebear.com/7.x/notionists/svg?seed=${selectedSeed}&backgroundColor=f1f5f9`}
+                className="w-full h-full rounded-full"
+                alt="Active Avatar"
+              />
+              <span className="absolute bottom-0 right-0 p-1 bg-amber-500 text-white rounded-full border border-slate-950 text-[10px] shadow-lg flex items-center justify-center">
+                ✨
+              </span>
+            </div>
+
+            {/* Avatar Selector Options Carousel */}
+            <div className="w-full overflow-x-auto pb-2 flex gap-2.5 px-0.5 justify-start scrollbar-thin scrollbar-thumb-white/10">
+              {[
+                { name: 'Năng động', seed: 'Felix' },
+                { name: 'Dễ thương', seed: 'Aria' },
+                { name: 'Cá tính', seed: 'Jack' },
+                { name: 'Mơ mộng', seed: 'Luna' },
+                { name: 'Tri thức', seed: 'Milo' },
+                { name: 'Tự tin', seed: 'Zoe' },
+                { name: 'Nhiệt huyết', seed: 'Leo' },
+                { name: 'Dịu dàng', seed: 'Bella' },
+                { name: 'Hài hước', seed: 'Charlie' },
+                { name: 'Đáng yêu', seed: 'Sophia' }
+              ].map((opt) => {
+                const isCurrent = opt.seed === selectedSeed;
+                return (
+                  <button
+                    key={opt.seed}
+                    onClick={() => handleAvatarChange(opt.seed)}
+                    className={`flex-shrink-0 flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all duration-300 cursor-pointer ${
+                      isCurrent
+                        ? 'border-amber-500 bg-amber-500/10 scale-105 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+                        : 'border-white/5 bg-slate-950/40 hover:border-white/20 hover:bg-slate-900/40'
+                    }`}
+                    title={opt.name}
+                  >
+                    <img
+                      src={`https://api.dicebear.com/7.x/notionists/svg?seed=${opt.seed}&backgroundColor=f1f5f9`}
+                      className="w-8 h-8 rounded-full bg-slate-800"
+                      alt={opt.name}
+                    />
+                    <span className={`text-[8px] font-bold mt-1 leading-none ${isCurrent ? 'text-amber-400' : 'text-slate-500'}`}>
+                      {opt.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </GlassCard>
+
           {/* Level Progress */}
           <GlassCard>
             <div className="flex items-center justify-between mb-2">
@@ -230,7 +308,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-4">
               {leaderboard.map((entry: LeaderboardEntry, idx) => {
-                const isMe = entry.username === 'You' || idx === 2;
+                const isMe = entry.username === 'You' || (user && entry.username === user.username) || idx === 2;
                 return (
                   <div
                     key={entry.id}
@@ -244,8 +322,8 @@ export default function ProfilePage() {
                       {idx + 1}
                     </span>
                     <img
-                      src={`https://api.dicebear.com/7.x/notionists/svg?seed=${entry.username}`}
-                      className={`w-8 h-8 rounded-full ${isMe ? 'bg-slate-800 shadow-sm' : 'bg-slate-800'}`}
+                      src={`https://api.dicebear.com/7.x/notionists/svg?seed=${isMe ? selectedSeed : entry.username}&backgroundColor=f1f5f9`}
+                      className={`w-8 h-8 rounded-full ${isMe ? 'bg-slate-800 shadow-sm border border-amber-500/30' : 'bg-slate-800'}`}
                       alt="Avatar"
                     />
                     <span className={`text-sm flex-1 ${isMe ? 'font-bold text-cyan-300' : 'font-semibold text-slate-300'}`}>
@@ -275,7 +353,11 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center gap-3 p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 -mx-2">
                     <span className="text-xs font-bold text-amber-400 w-4 text-center">3</span>
-                    <div className="w-8 h-8 rounded-full bg-slate-800 shadow-sm flex items-center justify-center text-xs">⭐</div>
+                    <img
+                      src={`https://api.dicebear.com/7.x/notionists/svg?seed=${selectedSeed}&backgroundColor=f1f5f9`}
+                      className="w-8 h-8 rounded-full bg-slate-800 shadow-sm border border-cyan-500/30"
+                      alt="Avatar"
+                    />
                     <span className="text-sm font-bold text-cyan-300 flex-1">You</span>
                     <span className="text-xs font-bold text-cyan-300">{userStats ? userStats.xp : '0'} XP</span>
                   </div>
