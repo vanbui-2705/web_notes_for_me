@@ -7,9 +7,11 @@ import confetti from 'canvas-confetti';
 import { notesAPI, categoriesAPI, focusAPI, gamificationAPI, metricsAPI } from '../lib/apiService';
 import type { Note, NoteStatus } from '../types/types';
 import GlassCard from '../components/ui/GlassCard';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function WeeklyPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [selectedWeek] = useState(new Date());
   const [activeDayIdx, setActiveDayIdx] = useState(0); // Current active day of the week (0 = Monday, 6 = Sunday)
   
@@ -44,6 +46,11 @@ export default function WeeklyPage() {
   const { data: userStats } = useQuery({
     queryKey: ['userStats'],
     queryFn: () => gamificationAPI.getUserStats(),
+  });
+
+  const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: () => gamificationAPI.getLeaderboard(),
   });
 
   // Mood integration
@@ -631,7 +638,7 @@ export default function WeeklyPage() {
 
       {/* ── 3. ADD TASK GLASS MODAL ── */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[9999] animate-fade-in">
           <div className="glass-card p-6 w-full max-w-md mx-4 shadow-2xl animate-scale-up border border-white/10 bg-slate-950/90 text-white">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-display font-black text-xl text-white flex items-center gap-2">
@@ -709,7 +716,7 @@ export default function WeeklyPage() {
       {/* ── LEADERBOARD MODAL ── */}
       {showLeaderboard && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] animate-fade-in"
           onClick={(e) => e.target === e.currentTarget && setShowLeaderboard(false)}
         >
           <div className="relative w-full max-w-md mx-4 animate-scale-up">
@@ -748,81 +755,66 @@ export default function WeeklyPage() {
 
               {/* Leaderboard list */}
               <div className="px-6 py-5 space-y-3">
-                {/* Rank 1 */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl relative overflow-hidden group"
-                  style={{ background: 'linear-gradient(135deg, rgba(255,183,3,0.12), rgba(255,183,3,0.04))', border: '1px solid rgba(255,183,3,0.25)' }}
-                >
-                  <div className="absolute right-3 top-3 text-2xl opacity-10">👑</div>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #ffb703, #ff8c00)', color: '#120a00', boxShadow: '0 0 15px rgba(255,183,3,0.4)' }}
-                  >
-                    1
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-white">Hổ Đất</p>
-                      <Crown className="w-3.5 h-3.5" style={{ color: '#ffb703' }} />
-                    </div>
-                    <p className="text-[10px]" style={{ color: 'rgba(255,183,3,0.6)' }}>Cấp 3 · CHIẾN BINH HẠNG VÀNG</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-black text-base" style={{ color: '#ffb703' }}>120 XP</p>
-                    <p className="text-[10px] text-slate-500">tuần này</p>
-                  </div>
-                </div>
+                {leaderboard.map((entry: any, idx: number) => {
+                  const isMe = user && entry.username === user.username;
+                  
+                  let containerStyle: any = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' };
+                  let rankStyle: any = { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' };
+                  
+                  if (idx === 0) {
+                    containerStyle = { background: 'linear-gradient(135deg, rgba(255,183,3,0.12), rgba(255,183,3,0.04))', border: '1px solid rgba(255,183,3,0.25)' };
+                    rankStyle = { background: 'linear-gradient(135deg, #ffb703, #ff8c00)', color: '#120a00', border: 'none', boxShadow: '0 0 15px rgba(255,183,3,0.4)' };
+                  } else if (idx === 1) {
+                    containerStyle = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' };
+                    rankStyle = { background: 'rgba(251,133,0,0.15)', color: '#fb8500', border: '1px solid rgba(251,133,0,0.3)' };
+                  }
+                  
+                  if (isMe) {
+                    containerStyle = {
+                      background: 'linear-gradient(135deg, rgba(255,183,3,0.06), rgba(251,133,0,0.04))',
+                      border: '2px solid rgba(255,183,3,0.35)',
+                      boxShadow: '0 0 20px rgba(255,183,3,0.08)'
+                    };
+                    rankStyle = { background: 'rgba(255,183,3,0.12)', color: '#fbbf24', border: '1px solid rgba(255,183,3,0.2)' };
+                  }
 
-                {/* Rank 2 */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
-                    style={{ background: 'rgba(251,133,0,0.15)', color: '#fb8500', border: '1px solid rgba(251,133,0,0.3)' }}
-                  >
-                    2
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-white">Phượng Hoàng Lửa</p>
+                  return (
+                    <div key={entry.id} className="flex items-center gap-4 p-4 rounded-2xl relative overflow-hidden group" style={containerStyle}>
+                      {idx === 0 && <div className="absolute right-3 top-3 text-2xl opacity-10">👑</div>}
+                      {isMe && (
+                        <div className="absolute -top-2 left-4">
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full text-black"
+                            style={{ background: 'linear-gradient(135deg, #ffb703, #ff8c00)' }}>
+                            BẠN
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0" style={rankStyle}>
+                        {idx + 1}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-white">{entry.username} {isMe && '(You)'}</p>
+                          {idx === 0 && <Crown className="w-3.5 h-3.5" style={{ color: '#ffb703' }} />}
+                          {isMe && idx !== 0 && <Shield className="w-3 h-3 text-amber-400" />}
+                        </div>
+                        <p className="text-[10px]" style={{ color: 'rgba(255,183,3,0.6)' }}>Cấp {entry.level}</p>
+                      </div>
+                      
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-black text-base" style={{ color: idx === 0 ? '#ffb703' : isMe ? '#fb8500' : '#e2e8f0' }}>
+                          {entry.xp} XP
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-500">Cấp 2 · CHIẾN BINH HẠNG BẠC</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-black text-base text-slate-300">40 XP</p>
-                    <p className="text-[10px] text-slate-500">tuần này</p>
-                  </div>
-                </div>
-
-                {/* Rank 3 - YOU (highlighted) */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl relative"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255,183,3,0.06), rgba(251,133,0,0.04))',
-                    border: '2px solid rgba(255,183,3,0.35)',
-                    boxShadow: '0 0 20px rgba(255,183,3,0.08)'
-                  }}
-                >
-                  <div className="absolute -top-2 left-4">
-                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full text-black"
-                      style={{ background: 'linear-gradient(135deg, #ffb703, #ff8c00)' }}>
-                      BẠN
-                    </span>
-                  </div>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
-                    style={{ background: 'rgba(255,183,3,0.12)', color: '#fbbf24', border: '1px solid rgba(255,183,3,0.2)' }}
-                  >
-                    3
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-white">{userStats ? 'van' : 'Bạn'}</p>
-                      <Shield className="w-3 h-3 text-amber-400" />
-                    </div>
-                    <p className="text-[10px]" style={{ color: 'rgba(255,183,3,0.5)' }}>Cấp {userStats?.level || 1} · {warriorRank}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-black text-base" style={{ color: '#fb8500' }}>{userStats?.xp || 0} XP</p>
-                    <p className="text-[10px] text-slate-500">tuần này</p>
-                  </div>
-                </div>
+                  );
+                })}
+                
+                {leaderboard.length === 0 && (
+                  <p className="text-center text-slate-400 text-sm py-4">Chưa có ai trên bảng xếp hạng.</p>
+                )}
               </div>
 
               {/* Footer CTA */}
@@ -850,7 +842,7 @@ export default function WeeklyPage() {
       {/* ── XP TOAST NOTIFICATION ── */}
       {xpToast && (
         <div
-          className="fixed bottom-6 right-6 z-50 animate-scale-up"
+          className="fixed bottom-6 right-6 z-[9999] animate-scale-up"
           style={{
             background: 'linear-gradient(135deg, rgba(20,16,4,0.95), rgba(30,22,4,0.98))',
             border: '1px solid rgba(255,183,3,0.35)',
@@ -877,7 +869,7 @@ export default function WeeklyPage() {
       {/* ── COMFORT TOAST NOTIFICATION ── */}
       {comfortToast && (
         <div
-          className="fixed bottom-6 right-6 z-50 animate-scale-up max-w-xs"
+          className="fixed bottom-6 right-6 z-[9999] animate-scale-up max-w-xs"
           style={{
             background: 'linear-gradient(135deg, rgba(20,16,4,0.95), rgba(30,22,4,0.98))',
             border: '1px solid rgba(251,133,0,0.35)',

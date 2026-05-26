@@ -21,6 +21,7 @@ import {
 import { financeAPI } from '../lib/apiService';
 import type { Transaction, SavingGoal, TransactionCategory, Budget, Debt } from '../types/types';
 import GlassCard from '../components/ui/GlassCard';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function FinancePage() {
   const queryClient = useQueryClient();
@@ -419,28 +420,60 @@ export default function FinancePage() {
               </div>
               
               {/* Visual Bar Chart */}
-              <div className="flex-1 flex items-end justify-between gap-1.5 px-2 min-h-[160px] pb-2">
-                {summary?.cash_flow_30days.map((flow, i) => {
-                  const maxVal = Math.max(...(summary?.cash_flow_30days.map(c => Math.abs(c.amount)) || []), 1);
-                  const heightPct = Math.round((Math.abs(flow.amount) / maxVal) * 100);
-                  return (
-                    <div key={flow.date} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                      <div 
-                        className={`w-full rounded-t transition-all ${flow.amount > 0 ? 'bg-emerald-400 group-hover:bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'bg-rose-400 group-hover:bg-rose-500 shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}
-                        style={{ height: `${Math.max(heightPct, 6)}%` }}
-                      />
-                      {/* Tooltip on hover */}
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 text-white border border-white/10 text-[10px] py-1.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap shadow-xl">
-                        {format(new Date(flow.date), 'MMM d')}: {flow.amount > 0 ? '+' : ''}{flow.amount.toLocaleString()} ₫
-                      </div>
-                    </div>
-                  );
-                })}
-                {(!summary?.cash_flow_30days || summary.cash_flow_30days.length === 0) && (
-                  <div className="text-center w-full text-xs text-slate-500 py-12 flex flex-col items-center justify-center">
-                    <span>No recent activity.</span>
-                    <span className="text-[10px] text-slate-600">Add transactions to visualize cash flow.</span>
+              <div className="flex-1 w-full min-h-[160px] pb-2">
+                {(!summary?.cash_flow_30days || summary.cash_flow_30days.every(f => f.amount === 0)) ? (
+                  <div className="text-center w-full h-full text-xs text-slate-500 py-12 flex flex-col items-center justify-center">
+                    <span>Chưa có dữ liệu giao dịch 30 ngày qua.</span>
+                    <span className="text-[10px] text-slate-600 mt-1">Thêm giao dịch để hiển thị biểu đồ dòng tiền.</span>
                   </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summary.cash_flow_30days} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={(val) => format(new Date(val), 'dd/MM')} 
+                        tick={{ fill: '#64748b', fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        minTickGap={20}
+                      />
+                      <YAxis 
+                        tickFormatter={(val) => {
+                          if (val === 0) return '0';
+                          return `${val >= 1000 || val <= -1000 ? (val / 1000) + 'k' : val}`;
+                        }} 
+                        tick={{ fill: '#64748b', fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={45}
+                      />
+                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
+                      <Tooltip 
+                        cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const isPositive = data.amount > 0;
+                            return (
+                              <div className="bg-slate-950 text-white border border-white/10 text-[10px] py-1.5 px-2 rounded shadow-xl">
+                                {format(new Date(data.date), 'dd MMM yyyy')}: 
+                                <span className={isPositive ? 'text-emerald-400 ml-1' : (data.amount < 0 ? 'text-rose-400 ml-1' : 'text-slate-400 ml-1')}>
+                                  {isPositive ? '+' : ''}{data.amount.toLocaleString()} ₫
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="amount" radius={[2, 2, 0, 0]} minPointSize={4}>
+                        {summary.cash_flow_30days.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.amount > 0 ? '#34d399' : (entry.amount < 0 ? '#fb7185' : 'transparent')} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 )}
               </div>
             </GlassCard>

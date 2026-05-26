@@ -77,7 +77,7 @@ export default function Topbar({ onHamburgerClick }: TopbarProps) {
 
   return (
     <header
-      className="flex items-center gap-4 px-6 flex-shrink-0 relative"
+      className="flex items-center gap-4 px-6 flex-shrink-0 relative z-[999]"
       style={{
         height: 'var(--topbar-h)',
         background: 'transparent',
@@ -127,7 +127,7 @@ export default function Topbar({ onHamburgerClick }: TopbarProps) {
 
           {/* Notifications Dropdown Panel */}
           {showNotifications && (
-            <div className="absolute right-0 mt-3 w-80 bg-slate-950/95 border border-white/10 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 overflow-hidden animate-scale-up">
+            <div className="absolute right-0 mt-3 w-80 glass-card z-50 overflow-hidden animate-scale-up">
               <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-slate-900/40">
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-xs text-white">Thông báo</span>
