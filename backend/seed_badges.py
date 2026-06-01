@@ -15,8 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from models import Base, Badge
-from database import engine
+from app.models import Base, Badge
+from app.database import engine
 
 
 BADGES = [

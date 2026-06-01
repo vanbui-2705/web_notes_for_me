@@ -6,6 +6,16 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://username:password@localhost:5432/webnotes"
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def parse_database_url(cls, value):
+        if isinstance(value, str):
+            if value.startswith("postgres://"):
+                value = value.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif value.startswith("postgresql://") and not value.startswith("postgresql+asyncpg://"):
+                value = value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
+
     # Security
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     ALGORITHM: str = "HS256"

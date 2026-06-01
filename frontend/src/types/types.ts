@@ -6,6 +6,9 @@ export interface User {
   is_active: boolean;
   xp?: number;
   level?: number;
+  current_streak?: number;
+  longest_streak?: number;
+  last_active_date?: string | null;
   is_admin?: boolean;
 }
 
@@ -96,6 +99,10 @@ export interface UserStats {
   level: number;
   xp_to_next_level: number;
   progress_percentage: number;
+  current_streak: number;
+  longest_streak: number;
+  last_active_date: string | null;
+  streak_tier: 'spark' | 'hot' | 'blaze' | 'legend';
   badges: Badge[];
 }
 

@@ -230,10 +230,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         
         {/* Row 1 */}
-        <HabitWidget habits={habits} className="col-span-1 md:col-span-4" />
+        <HabitWidget habits={habits} className="col-span-1 md:col-span-3" />
 
         {/* Focus Mode Widget */}
-        <div className="col-span-1 md:col-span-4">
+        <div className="col-span-1 md:col-span-3">
           <GlassCard className="h-full flex flex-col justify-between items-center text-center py-6">
             <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
               Focus Mode
@@ -279,7 +279,14 @@ export default function DashboardPage() {
           </GlassCard>
         </div>
 
-        <QuoteWidget className="col-span-1 md:col-span-4" />
+        <StreakWidget
+          className="col-span-1 md:col-span-3"
+          streak={userStats?.current_streak || 0}
+          best={userStats?.longest_streak || 0}
+          tier={userStats?.streak_tier || 'spark'}
+        />
+
+        <QuoteWidget className="col-span-1 md:col-span-3" />
 
         {/* Row 2 */}
         <div className="col-span-1 md:col-span-6">

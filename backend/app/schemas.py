@@ -28,6 +28,9 @@ class UserResponse(UserBase):
     is_active: bool
     xp: int = 0
     level: int = 1
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_active_date: Optional[date] = None
     is_admin: bool = False
 
     class Config:
@@ -44,6 +47,10 @@ class UserStatsResponse(BaseModel):
     level: int
     xp_to_next_level: int
     progress_percentage: float
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_active_date: Optional[date] = None
+    streak_tier: str = "spark"
     badges: List["BadgeResponse"]
 
     class Config:

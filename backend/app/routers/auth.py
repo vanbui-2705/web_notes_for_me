@@ -7,6 +7,7 @@ from ..database import get_db
 from ..models import User
 from ..schemas import UserCreate, UserResponse, UserLogin, Token
 from ..utils.auth import create_access_token, authenticate_user, get_password_hash, get_current_active_user
+from ..utils.streak import touch_daily_streak
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -47,10 +48,19 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if touch_daily_streak(user):
+        await db.commit()
+
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_active_user)):
+async def get_me(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if touch_daily_streak(current_user):
+        await db.commit()
+        await db.refresh(current_user)
     return current_user

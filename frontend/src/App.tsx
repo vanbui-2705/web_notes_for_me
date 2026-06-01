@@ -47,7 +47,9 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function App() {
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedGlow = localStorage.getItem('settings-glow');
     document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.setAttribute('data-glow', savedGlow === 'false' ? 'off' : 'on');
   }, []);
 
   return (

@@ -298,6 +298,17 @@ h1, h2, h3, h4, .font-display {
   border-color: rgba(255, 183, 3, 0.35);
 }
 
+[data-glow='off'] .glass-card,
+[data-glow='off'] .glass-card:hover,
+[data-glow='off'] .btn-primary,
+[data-glow='off'] .btn-primary:hover {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+[data-glow='off'] .glass-card:hover {
+  transform: none;
+}
+
 /* ===================================================
    BUTTON UTILITIES
    =================================================== */

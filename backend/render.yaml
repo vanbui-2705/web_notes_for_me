@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: web-note-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: web-note-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: APP_NAME
+        value: "Web Note App API"
+      - key: DEBUG
+        value: "false"
+
+databases:
+  - name: web-note-db
+    databaseName: webnotes
+    user: webnotes

@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta
 from typing import List
 
 from ..database import get_db
 from ..utils.auth import get_current_active_user
-from ..models import User, Badge, UserBadge, Note, NoteStatus, HabitLog
+from ..models import User, Badge, UserBadge, Note, NoteStatus
 from ..schemas import LeaderboardEntry, AddXPRequest
+from ..utils.streak import get_streak_tier, touch_daily_streak
 
 router = APIRouter(prefix="/users", tags=["Gamification"])
 
@@ -41,6 +41,10 @@ async def get_user_stats(
     """Get current user's gamification stats: XP, level, badges"""
     from ..schemas import BadgeResponse
 
+    if touch_daily_streak(current_user):
+        await db.commit()
+        await db.refresh(current_user)
+
     # Get user's badges
     result = await db.execute(
         select(UserBadge).filter(UserBadge.user_id == current_user.id)
@@ -65,6 +69,10 @@ async def get_user_stats(
         "level": current_user.level,
         "xp_to_next_level": calculate_xp_to_next_level(current_user.level),
         "progress_percentage": calculate_progress_percentage(current_user.xp, current_user.level),
+        "current_streak": current_user.current_streak or 0,
+        "longest_streak": current_user.longest_streak or 0,
+        "last_active_date": current_user.last_active_date,
+        "streak_tier": get_streak_tier(current_user.current_streak or 0),
         "badges": badge_list
     }
 
@@ -116,14 +124,7 @@ async def check_badge_achievements(db: AsyncSession, user: User):
 
         # Check streak badge
         if badge.requirement_type == "streak":
-            habit_logs_count = await db.execute(
-                select(func.count(HabitLog.id)).where(
-                    HabitLog.user_id == user.id,
-                    HabitLog.status == "done",
-                    HabitLog.date >= datetime.utcnow().date() - timedelta(days=badge.requirement_value)
-                )
-            )
-            if habit_logs_count.scalar() >= badge.requirement_value:
+            if (user.current_streak or 0) >= badge.requirement_value:
                 should_award = True
 
         # Check task completion badge

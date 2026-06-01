@@ -297,6 +297,10 @@ export const gamificationAPI = {
         level: 13,
         xp_to_next_level: 100,
         progress_percentage: 25,
+        current_streak: 15,
+        longest_streak: 23,
+        last_active_date: new Date().toISOString().slice(0, 10),
+        streak_tier: 'hot',
         badges: [],
       };
     }

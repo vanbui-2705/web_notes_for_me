@@ -25,6 +25,9 @@ class User(Base):
     # Gamification fields
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_active_date = Column(Date, nullable=True)
 
     notes = relationship("Note", back_populates="owner", cascade="all, delete-orphan")
     categories = relationship("Category", back_populates="owner", cascade="all, delete-orphan")

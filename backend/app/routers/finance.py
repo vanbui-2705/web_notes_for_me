@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta, date
 import re
+import unicodedata
 
 from ..database import get_db
 from ..utils.auth import get_current_active_user
@@ -18,6 +19,141 @@ from ..schemas import (
 )
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
+
+
+DEFAULT_CATEGORY_DEFINITIONS = {
+    "Food & Dining": {"icon": "🍔", "color": "#FF9800", "type": "expense"},
+    "Shopping": {"icon": "🛍️", "color": "#E91E63", "type": "expense"},
+    "Transportation": {"icon": "🚗", "color": "#00BCD4", "type": "expense"},
+    "Entertainment": {"icon": "🎬", "color": "#9C27B0", "type": "expense"},
+    "Salary": {"icon": "💰", "color": "#4CAF50", "type": "income"},
+    "Freelance": {"icon": "💻", "color": "#3F51B5", "type": "income"},
+}
+
+CATEGORY_KEYWORDS = {
+    "Food & Dining": [
+        "an", "uong", "pho", "com", "bun", "mi", "my", "cafe", "ca phe", "tra sua",
+        "do an", "food", "nuoc", "banh", "sieu thi", "di cho", "quan an"
+    ],
+    "Transportation": [
+        "xe", "xang", "grab", "taxi", "ve xe", "bus", "gui xe", "di chuyen", "transport"
+    ],
+    "Shopping": [
+        "mua", "shopping", "quan ao", "giay", "do dung", "my pham", "phu kien", "shopee", "lazada"
+    ],
+    "Entertainment": [
+        "xem phim", "choi", "nhau", "game", "netflix", "karaoke", "giai tri"
+    ],
+    "Salary": [
+        "luong", "thuong", "salary", "payroll"
+    ],
+    "Freelance": [
+        "du an", "freelance", "part time", "job ngoai", "khach tra"
+    ],
+}
+
+INCOME_KEYWORDS = [
+    "nhan", "luong", "thuong", "lai", "thu nhap", "ban hang", "ban do", "duoc tra",
+    "khach tra", "hoan tien", "refund", "nap tien", "tien vao", "chuyen vao", "thu no",
+    "cong tien", "duoc cong", "salary", "freelance"
+]
+
+EXPENSE_KEYWORDS = [
+    "an", "uong", "mua", "chi", "tieu", "tra tien", "thanh toan", "dong tien",
+    "mat", "xang", "grab", "taxi", "cafe", "ca phe", "tra sua", "di cho", "shopee",
+    "lazada", "nhau", "game", "xem phim", "tra no"
+]
+
+
+def normalize_money_text(text: str) -> str:
+    text = text.lower().replace("đ", "d")
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def extract_amount_from_text(normalized_text: str) -> float:
+    amount_match = re.search(
+        r"(?<!\w)(\d+(?:[.,]\d+)?)(?:\s*(k|nghin|ngan|tr|trieu|m|cu))?",
+        normalized_text
+    )
+    if not amount_match:
+        return 0.0
+
+    raw_value = amount_match.group(1)
+    unit = amount_match.group(2)
+
+    if unit:
+        value = float(raw_value.replace(",", "."))
+    else:
+        value = float(raw_value.replace(".", "").replace(",", ""))
+
+    if unit in {"k", "nghin", "ngan"}:
+        value *= 1000
+    elif unit in {"tr", "trieu", "m", "cu"}:
+        value *= 1000000
+
+    return value
+
+
+def has_keyword(normalized_text: str, keyword: str) -> bool:
+    pattern = r"(?<!\w)" + re.escape(keyword) + r"(?!\w)"
+    return re.search(pattern, normalized_text) is not None
+
+
+def infer_transaction_type(normalized_text: str) -> str:
+    has_expense_word = any(has_keyword(normalized_text, keyword) for keyword in EXPENSE_KEYWORDS)
+    has_income_word = any(has_keyword(normalized_text, keyword) for keyword in INCOME_KEYWORDS)
+
+    if normalized_text.startswith("+"):
+        return "income"
+    if normalized_text.startswith("-"):
+        return "expense"
+    if has_expense_word:
+        return "expense"
+    if has_income_word:
+        return "income"
+    return "expense"
+
+
+def infer_category_name(normalized_text: str, transaction_type: str) -> str | None:
+    for category_name, keywords in CATEGORY_KEYWORDS.items():
+        if any(has_keyword(normalized_text, keyword) for keyword in keywords):
+            return category_name
+    return "Salary" if transaction_type == "income" else None
+
+
+async def get_or_create_transaction_category(
+    db: AsyncSession,
+    user_id: int,
+    category_name: str | None
+) -> int | None:
+    if not category_name:
+        return None
+
+    cat_result = await db.execute(
+        select(TransactionCategory).filter(
+            TransactionCategory.user_id == user_id,
+            TransactionCategory.name == category_name
+        )
+    )
+    category = cat_result.scalar_one_or_none()
+    if category:
+        return category.id
+
+    category_data = DEFAULT_CATEGORY_DEFINITIONS.get(category_name)
+    if not category_data:
+        return None
+
+    category = TransactionCategory(
+        name=category_name,
+        user_id=user_id,
+        is_system=True,
+        **category_data
+    )
+    db.add(category)
+    await db.flush()
+    return category.id
 
 
 # ==================== TRANSACTION CATEGORIES ====================
@@ -157,6 +293,34 @@ async def magic_input_transaction(
     db: AsyncSession = Depends(get_db)
 ):
     """Magic Input: NLP Parsing for transactions (e.g. 'ăn phở 30k', 'nhận lương 15tr')"""
+    normalized_text = normalize_money_text(request.text)
+    parsed_amount = extract_amount_from_text(normalized_text)
+
+    if parsed_amount == 0:
+        raise HTTPException(status_code=400, detail="Khong tim thay so tien hop le trong cau")
+
+    transaction_type = infer_transaction_type(normalized_text)
+    if transaction_type == "expense":
+        parsed_amount = -parsed_amount
+
+    matched_category_name = infer_category_name(normalized_text, transaction_type)
+    parsed_category_id = await get_or_create_transaction_category(db, current_user.id, matched_category_name)
+
+    transaction = Transaction(
+        title=request.text.strip().capitalize(),
+        amount=parsed_amount,
+        date=date.today(),
+        category_id=parsed_category_id,
+        user_id=current_user.id
+    )
+    db.add(transaction)
+    await db.commit()
+    await db.refresh(transaction)
+
+    stmt = select(Transaction).filter(Transaction.id == transaction.id).options(joinedload(Transaction.category))
+    result = await db.execute(stmt)
+    return result.scalar_one()
+
     text = request.text.lower()
     
     # Extract amount

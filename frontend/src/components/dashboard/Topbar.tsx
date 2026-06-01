@@ -19,6 +19,14 @@ export default function Topbar({ onHamburgerClick }: TopbarProps) {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      setTheme((localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+    };
+    window.addEventListener('app-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
+  }, []);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
